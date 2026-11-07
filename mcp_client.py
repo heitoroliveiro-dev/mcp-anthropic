@@ -76,7 +76,7 @@ class MCPClient:
         return []
 
     async def read_resource(self, uri: str) -> Any:
-        """Expose a list of resouces available to read"""
+        """Ask for a list of resouces available to read"""
         result = await self.session().read_resource(AnyUrl(uri))
         resource = result.contents[0]
 
