@@ -1,5 +1,6 @@
 from pydantic import Field
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.prompts import base
 
 mcp = FastMCP("DocumentMCP", log_level="ERROR")
 
@@ -51,9 +52,32 @@ def fetch_doc(doc_id:str):
         raise ValueError(f'Doc with id {doc_id} not found')
     return docs[doc_id]
 
-# TODO: Write a resource to return the contents of a particular doc
-# TODO: Write a prompt to rewrite a doc in markdown format
-# TODO: Write a prompt to summarize a doc
+@mcp.prompt(
+    name="list_prompts",
+    description="List available prompts when user type /"
+)
+def list_prompts() -> list[str]:
+    return list(docs.keys())
+
+@mcp.prompt(
+    name="format",
+    description="Rewrite a doc in markdown format."
+)
+def format_doc(doc_id: str = Field(description="Id of the document that will be edited")) -> list[base.Message]:
+    prompt = f"""
+    Rewrite the <document_id>{doc_id}</document_id> in markdown.
+    Use titles, list and tables when makes sense.
+    Use tools edit_document to save the result
+    """
+    return [base.UserMessage(prompt)]
+
+def summarize_doc(doc_id: str = Field(description="Id of the document that will be summarized")) -> list[base.Message]:
+    prompt = f"""
+    Summarize the <document_id>{doc_id}</document_id>.
+    Use titles, list and tables when makes sense.
+    Use tools edit_document to save the result
+    """
+    return [base.UserMessage(prompt)]
 
 
 if __name__ == "__main__":
