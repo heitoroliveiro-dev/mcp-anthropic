@@ -1,5 +1,7 @@
 import sys
 import asyncio
+import json
+from pydantic import AnyUrl
 from typing import Optional, Any
 from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters, types
@@ -7,6 +9,9 @@ from mcp.client.stdio import stdio_client
 
 
 class MCPClient:
+    """
+    'Translator' that lives inside host (chatbot at main.py)
+    """
     def __init__(
         self,
         command: str,
@@ -20,6 +25,9 @@ class MCPClient:
         self._exit_stack: AsyncExitStack = AsyncExitStack()
 
     async def connect(self):
+        """
+        Open connection (stdio or HTTP)
+        """
         server_params = StdioServerParameters(
             command=self._command,
             args=self._args,
@@ -35,6 +43,9 @@ class MCPClient:
         await self._session.initialize()
 
     def session(self) -> ClientSession:
+        """
+        Initialize a new session when connection start.
+        """
         if self._session is None:
             raise ConnectionError(
                 "Client session not initialized or cache not populated. Call connect_to_server first."
@@ -42,12 +53,18 @@ class MCPClient:
         return self._session
 
     async def list_tools(self) -> list[types.Tool]:
+        """
+        Ask a list of available tools to the server
+        """
         result = await self.session().list_tools()
         return result.tools
     
     async def call_tool(
         self, tool_name: str, tool_input: dict
     ) -> types.CallToolResult | None:
+        """
+        Send parameters and a call_tool request to the server
+        """
         return await self.session().call_tool(tool_name, tool_input)
 
     async def list_prompts(self) -> list[types.Prompt]:
@@ -59,9 +76,16 @@ class MCPClient:
         return []
 
     async def read_resource(self, uri: str) -> Any:
-        # TODO: Read a resource, parse the contents and return it
-        return []
+        """Expose a list of resouces available to read"""
+        result = await self.session().read_resource(AnyUrl(uri))
+        resource = result.contents[0]
 
+        if isinstance(resource, types.TextResourceContents):
+            if resource.mimeType == "application/json":
+                return json.loads(resource.text)
+
+        return resource.text
+        
     async def cleanup(self):
         await self._exit_stack.aclose()
         self._session = None
